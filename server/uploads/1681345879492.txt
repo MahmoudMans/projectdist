@@ -1,0 +1,56 @@
+i got this error :  throw new sequelizeErrors.EagerLoadingError(`${targetModel.name} is not associated to ${this.name}!`);
+            ^
+
+EagerLoadingError [SequelizeEagerLoadingError]: Question is not associated to Quiz!
+    at Function._getIncludedAssociation (C:\Users\mahmo\Desktop\isssenior\server\node_modules\sequelize\lib\model.js:565:13)
+    at Function._validateIncludedElement (C:\Users\mahmo\Desktop\isssenior\server\node_modules\sequelize\lib\model.js:502:53)        
+    at C:\Users\mahmo\Desktop\isssenior\server\node_modules\sequelize\lib\model.js:421:37
+    at Array.map (<anonymous>)
+    at Function._validateIncludedElements (C:\Users\mahmo\Desktop\isssenior\server\node_modules\sequelize\lib\model.js:417:39)       
+    at Function.findAll (C:\Users\mahmo\Desktop\isssenior\server\node_modules\sequelize\lib\model.js:1118:12)
+    at processTicksAndRejections (node:internal/process/task_queues:96:5)
+    at async Function.findOne (C:\Users\mahmo\Desktop\isssenior\server\node_modules\sequelize\lib\model.js:1228:12)
+    at async Function.findByPk (C:\Users\mahmo\Desktop\isssenior\server\node_modules\sequelize\lib\model.js:1215:12)
+    at async exports.submitQuiz (C:\Users\mahmo\Desktop\isssenior\server\controllers\grade.controller.js:8:16) , this is the code for grade.controller : const { Grade, Quiz, Question } = require("../utils/db");
+
+exports.submitQuiz = async (req, res) => {
+  const { answers } = req.body;
+  const quizId = req.params.quizId;
+  const studentId = req.user.id;
+
+  const quiz = await Quiz.findByPk(quizId, { include: Question });
+  if (!quiz) {
+    return res.status(404).json({ error: "Quiz not found" });
+  }
+
+  let score = 0;
+  quiz.Questions.forEach((question) => {
+    if (
+      answers[question.id] &&
+      answers[question.id] === question.correctAnswer
+    ) {
+      score += 1;
+    }
+  });
+
+  const passed = score >= quiz.passingGrade;
+
+  const grade = await Grade.create({ studentId, quizId, score, passed });
+
+  res.status(200).json({ grade });
+};
+
+exports.getGrades = async (req, res) => {
+  try {
+    const studentId = req.user.id;
+
+    const grades = await Grade.findAll({
+      where: { studentId },
+      include: [{ model: Quiz, as: "quiz" }],
+    });
+
+    res.status(200).send({ grades });
+  } catch (error) {
+    res.status(500).send({ message: "Error retrieving grades", error });
+  }
+};
